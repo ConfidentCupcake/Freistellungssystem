@@ -1,0 +1,25 @@
+# Local development database. Credentials here are throwaway and must match
+# DATABASE_URL in .env — do not reuse them anywhere real.
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: btz-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: btz
+      POSTGRES_PASSWORD: btz
+      POSTGRES_DB: btzfreistellungen
+      # Deterministic collation, so ORDER BY does not drift between machines.
+      LANG: de_DE.utf8
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U btz -d btzfreistellungen']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
