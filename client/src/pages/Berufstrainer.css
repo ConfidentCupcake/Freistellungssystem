@@ -9,6 +9,10 @@
   border-right: 1px solid var(--border); }
 .trainer__brand { font-weight: 750; letter-spacing: .02em; }
 .trainer__brand span { margin-left: 7px; font-weight: 600; }
+/* Oben links, zwischen Marke und Navigation. Die Leiste ist eine Flex-Spalte,
+   ohne align-self zöge der Knopf auf die volle Breite — die Rahmenoptik der
+   übrigen Knöpfe erbt er von der .trainer button-Regel weiter unten. */
+.trainer__password { align-self: start; font-size: 13px; }
 .trainer__sidebar nav { display: grid; gap: 6px; }
 .trainer__sidebar nav button { width: 100%; padding: 12px; border: 0; text-align: left;
   background: transparent; border-radius: 4px; color: var(--ink); font: inherit; cursor: pointer; }

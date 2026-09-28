@@ -6,8 +6,11 @@ import Home from './pages/Home.jsx';
 import Login from './pages/Login.jsx';
 import NotFound from './pages/NotFound.jsx';
 import Teilnehmer from './pages/Teilnehmer.jsx';
+import Berufstrainer from './pages/Berufstrainer.jsx';
 
 export default function App() {
+  // Die Zugriffskontrolle im Client lenkt zur passenden Ansicht; alle
+  // Schreibrechte kontrolliert zusätzlich die Express-API.
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
@@ -26,6 +29,10 @@ export default function App() {
             <Admin />
           </RequireAuth>
         }
+      />
+      <Route
+        path="/berufstrainer"
+        element={<RequireAuth role="berufstrainer"><Berufstrainer /></RequireAuth>}
       />
       <Route
         path="/teilnehmer"

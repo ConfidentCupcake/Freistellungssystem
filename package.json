@@ -15,7 +15,8 @@
     "db:up": "docker compose up -d --wait",
     "db:down": "docker compose down",
     "migrate": "node ./scripts/migrate.js",
-    "seed": "node ./scripts/seed-user.js"
+    "seed": "node ./scripts/seed-user.js",
+    "test": "node --test"
   },
   "dependencies": {
     "connect-pg-simple": "^10.0.0",

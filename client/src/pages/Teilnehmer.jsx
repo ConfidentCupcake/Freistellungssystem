@@ -3,48 +3,18 @@ import { Link } from 'react-router-dom';
 
 import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
+import PasswordDialog from '../PasswordDialog.jsx';
+import { formatDay, formatTime } from '../format.js';
+import { AlertIcon, CheckIcon, ChevronIcon, CloseIcon, PlusIcon } from '../icons.jsx';
 import { OTHER_REASON, REASONS } from '../reasons.js';
+import { FILTERS, PHASE_LABELS, groupFor, phaseFor } from '../freistellungStatus.js';
 
-// `reason` is what the dropdown shows and `customReason` what was typed into
-// the Sonstiges dialog; only one of them is ever sent (see handleSubmit).
-// `assignedBerufstrainerId` is deliberately allowed to stay empty: the column
-// is NULL until somebody is put on the case, so the dropdown offers that too.
 const EMPTY_FORM = {
   startDate: '',
   endDate: '',
   reason: '',
-  customReason: '',
-  assignedBerufstrainerId: ''
+  customReason: ''
 };
-
-// The status values come from the CHECK constraint on freistellungen.status.
-// An unknown one falls back to the raw value rather than rendering nothing.
-const STATUS_LABELS = {
-  offen: 'Offen',
-  genehmigt: 'Genehmigt',
-  abgelehnt: 'Abgelehnt',
-  geschlossen: 'Geschlossen'
-};
-
-// 'alle' is not a status — it is the unfiltered view, and the first chip.
-const FILTERS = [
-  { key: 'alle', label: 'Alle' },
-  { key: 'offen', label: 'Offen' },
-  { key: 'genehmigt', label: 'Genehmigt' },
-  { key: 'abgelehnt', label: 'Abgelehnt' },
-  { key: 'geschlossen', label: 'Geschlossen' }
-];
-
-const dayFormat = new Intl.DateTimeFormat('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
-const timeFormat = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' });
-
-function formatDay(value) {
-  return value ? dayFormat.format(new Date(value)) : '—';
-}
-
-function formatTime(value) {
-  return value ? timeFormat.format(new Date(value)) : '—';
-}
 
 // The interval is half-open, exactly as the API stores it: 00:00 to 00:00 of
 // the following day is one whole day, so whole days are counted rather than the
@@ -60,8 +30,6 @@ function formatSpan(start, end) {
   return hours === 1 ? '1 Std.' : `${hours} Std.`;
 }
 
-// A row's headline: a release that starts and ends on the same calendar day
-// says that date once instead of repeating it.
 function formatRange(start, end) {
   const from = formatDay(start);
   const to = formatDay(end);
@@ -69,38 +37,38 @@ function formatRange(start, end) {
   return from === to ? from : `${from} – ${to}`;
 }
 
-// A datetime-local field hands back a local wall-clock string with no offset.
-// Turning it into an ISO string here means the server stores the instant the
-// user actually meant, whatever timezone it runs in.
 function toIso(value) {
   return new Date(value).toISOString();
 }
 
 export default function Teilnehmer() {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
 
   const [freistellungen, setFreistellungen] = useState([]);
-  // Fills the assignee dropdown. Ids and names only — that is all the API hands
-  // a non-admin.
-  const [trainers, setTrainers] = useState([]);
+  // Ein Zeitgeber aktualisiert die Ansicht bei Beginn des Termins ohne Reload.
+  const [now, setNow] = useState(Date.now());
+  const [actionId, setActionId] = useState(null);
+  const [profile, setProfile] = useState({
+    firstName: user.firstName || '', lastName: user.lastName || '',
+    trainingArea: user.trainingArea || ''
+  });
+  const [profileOpen, setProfileOpen] = useState(!user.firstName || !user.lastName || !user.trainingArea);
+  const [profileError, setProfileError] = useState(null);
+  const [savingProfile, setSavingProfile] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
 
   const [filter, setFilter] = useState('alle');
   const [expandedId, setExpandedId] = useState(null);
 
-  // The form is hidden behind a button: the list is what the page is for, and
-  // filing a request is the occasional action.
+  const [passwordOpen, setPasswordOpen] = useState(false);
+
   const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [formError, setFormError] = useState(null);
   const [notice, setNotice] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // The Sonstiges dialog. `dialogText` is the draft — it only becomes
-  // form.customReason once the dialog is confirmed, so cancelling leaves the
-  // form untouched. `reasonBeforeDialog` is where the dropdown falls back to if
-  // the dialog is dismissed without a reason ever being given.
   const dialogRef = useRef(null);
   const reasonBeforeDialog = useRef('');
   const [dialogText, setDialogText] = useState('');
@@ -108,11 +76,10 @@ export default function Teilnehmer() {
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([api('/freistellungen'), api('/freistellungen/berufstrainer')])
-      .then(([list, people]) => {
+    api('/freistellungen')
+      .then((list) => {
         if (cancelled) return;
         setFreistellungen(list.freistellungen);
-        setTrainers(people.berufstrainer);
       })
       .catch((err) => {
         if (!cancelled) setLoadError(err.message);
@@ -126,17 +93,23 @@ export default function Teilnehmer() {
     };
   }, []);
 
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
+
   const counts = useMemo(() => {
     const tally = { alle: freistellungen.length };
     freistellungen.forEach((row) => {
-      tally[row.status] = (tally[row.status] || 0) + 1;
+      const group = groupFor(row, now);
+      tally[group] = (tally[group] || 0) + 1;
     });
     return tally;
-  }, [freistellungen]);
+  }, [freistellungen, now]);
 
   const visible = useMemo(
-    () => (filter === 'alle' ? freistellungen : freistellungen.filter((row) => row.status === filter)),
-    [freistellungen, filter]
+    () => (filter === 'alle' ? freistellungen : freistellungen.filter((row) => groupFor(row, now) === filter)),
+    [freistellungen, filter, now]
   );
 
   function updateField(field) {
@@ -152,12 +125,9 @@ export default function Teilnehmer() {
 
   function openReasonDialog() {
     setDialogText(form.customReason);
-    // showModal() throws if the dialog is already open.
     if (dialogRef.current && !dialogRef.current.open) dialogRef.current.showModal();
   }
 
-  // Choosing Sonstiges is not a reason by itself — it is a request for the
-  // dialog, which supplies one.
   function handleReasonChange(event) {
     const value = event.target.value;
 
@@ -180,11 +150,6 @@ export default function Teilnehmer() {
     dialogRef.current?.close();
   }
 
-  // Runs for every way out of the dialog — the Abbrechen button, Esc, and the
-  // close() that confirmReason itself calls. It queues after confirmReason's
-  // update, so by the time it reads customReason a confirmed reason is already
-  // there and the dropdown keeps Sonstiges. Without one, the dropdown goes back
-  // to whatever it showed before, rather than sitting on an empty Sonstiges.
   function handleDialogClose() {
     setForm((current) => ({
       ...current,
@@ -201,15 +166,52 @@ export default function Teilnehmer() {
     setExpandedId((current) => (current === id ? null : id));
   }
 
+  // Teilnehmer können „unterwegs“ und „zurück“ melden, aber niemals selbst
+  // genehmigen oder schließen. Nach der Aktion wird die Serverliste geladen.
+  async function report(id, action) {
+    // Die Unterwegs-Meldung ist ein vorgezogener Zustandswechsel. Eine
+    // Bestätigung verhindert versehentliche Klicks vor dem geplanten Beginn.
+    if (action === 'unterwegs' && !window.confirm(
+      'Jetzt „bei Termin“ melden? Der Berufstrainer sieht diesen Status sofort.'
+    )) return;
+    setActionId(id);
+    setFormError(null);
+    try {
+      await api(`/freistellungen/${id}/${action}`, { method: 'PUT' });
+      const list = await api('/freistellungen');
+      setFreistellungen(list.freistellungen);
+      setNow(Date.now());
+      setNotice(action === 'rueckkehr'
+        ? 'Ihre Rückkehr wurde gemeldet. Der Berufstrainer bestätigt den Abschluss.'
+        : 'Sie wurden als bei Termin vorgemerkt.');
+    } catch (err) {
+      setFormError(err.message);
+    } finally {
+      setActionId(null);
+    }
+  }
+
+  async function saveProfile(event) {
+    event.preventDefault();
+    setSavingProfile(true);
+    setProfileError(null);
+    try {
+      const result = await api('/freistellungen/profil', { method: 'PUT', body: profile });
+      updateUser(result.user);
+      setProfileOpen(false);
+      setNotice('Ihre Angaben wurden gespeichert.');
+    } catch (err) {
+      setProfileError(err.message);
+    } finally {
+      setSavingProfile(false);
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
 
-    // What gets stored is the reason itself, never the word "Sonstiges".
     const reason = form.reason === OTHER_REASON ? form.customReason.trim() : form.reason;
 
-    // The dialog will not confirm an empty reason and reverts the dropdown when
-    // dismissed, so this should be unreachable — it just refuses to send a
-    // request with no reason rather than trusting that.
     if (!reason) {
       setFormError('Bitte geben Sie einen Grund an.');
       if (form.reason === OTHER_REASON) openReasonDialog();
@@ -226,12 +228,9 @@ export default function Teilnehmer() {
           startDate: toIso(form.startDate),
           endDate: toIso(form.endDate),
           reason,
-          assignedBerufstrainerId: form.assignedBerufstrainerId || null
         }
       });
 
-      // The server decides the order (and the status), so the list is reloaded
-      // rather than patched with the new row.
       const list = await api('/freistellungen');
       setFreistellungen(list.freistellungen);
       setFilter('alle');
@@ -252,6 +251,13 @@ export default function Teilnehmer() {
           <span className="fs-bar__mark">BTZ</span>
           <span className="fs-bar__name">Freistellungen</span>
         </div>
+        <button
+          type="button"
+          className="fs-bar__action"
+          onClick={() => setPasswordOpen(true)}
+        >
+          Passwort ändern
+        </button>
         <div className="fs-bar__spacer" />
         <Link className="fs-bar__link" to="/">
           Startseite
@@ -264,6 +270,31 @@ export default function Teilnehmer() {
       </header>
 
       <main className="fs-main">
+        <section className="fs-card" style={{ marginBottom: 20, padding: 18 }}>
+          <button type="button" className="fs-btn fs-btn--ghost"
+            onClick={() => setProfileOpen((current) => !current)}>Meine Angaben</button>
+          {profileOpen && <form className="fs-form" onSubmit={saveProfile}>
+            <p>Ergänzen Sie Ihren Namen und Ausbildungsbereich.</p>
+            {profileError && <p role="alert" className="fs-banner fs-banner--error">{profileError}</p>}
+            <div className="fs-form__grid">
+              <label className="fs-field">Vorname
+                <input className="fs-input" required maxLength={100} value={profile.firstName}
+                  onChange={(event) => setProfile({ ...profile, firstName: event.target.value })} />
+              </label>
+              <label className="fs-field">Nachname
+                <input className="fs-input" required maxLength={100} value={profile.lastName}
+                  onChange={(event) => setProfile({ ...profile, lastName: event.target.value })} />
+              </label>
+              <label className="fs-field">Ausbildungsbereich
+                <input className="fs-input" required maxLength={150} value={profile.trainingArea}
+                  onChange={(event) => setProfile({ ...profile, trainingArea: event.target.value })} />
+              </label>
+            </div>
+            <button className="fs-btn fs-btn--primary" disabled={savingProfile} type="submit">
+              Angaben speichern
+            </button>
+          </form>}
+        </section>
         <div className="fs-headline">
           <div className="fs-headline__text">
             <h1 className="fs-h1">Meine Freistellungen</h1>
@@ -348,8 +379,6 @@ export default function Teilnehmer() {
                   <label className="fs-eyebrow" htmlFor="reason">
                     Grund
                   </label>
-                  {/* The options live in client/src/reasons.js — that is the
-                      one place to edit them. */}
                   <select
                     id="reason"
                     name="reason"
@@ -369,8 +398,6 @@ export default function Teilnehmer() {
                     <option value={OTHER_REASON}>{OTHER_REASON} …</option>
                   </select>
 
-                  {/* Re-picking Sonstiges fires no change event, so reopening
-                      the dialog needs its own way in. */}
                   {form.reason === OTHER_REASON && form.customReason && (
                     <p className="fs-custom">
                       <span className="fs-custom__text">{form.customReason}</span>
@@ -381,25 +408,6 @@ export default function Teilnehmer() {
                   )}
                 </div>
 
-                <div className="fs-field">
-                  <label className="fs-eyebrow" htmlFor="trainer">
-                    Berufstrainer (optional)
-                  </label>
-                  <select
-                    id="trainer"
-                    name="assignedBerufstrainerId"
-                    className="fs-input fs-select"
-                    value={form.assignedBerufstrainerId}
-                    onChange={updateField('assignedBerufstrainerId')}
-                  >
-                    <option value="">Noch nicht zugewiesen</option>
-                    {trainers.map((person) => (
-                      <option key={person.id} value={person.id}>
-                        {person.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
               </div>
 
               <div className="fs-form__actions">
@@ -415,8 +423,6 @@ export default function Teilnehmer() {
               </div>
             </form>
 
-            {/* A sibling of the request form, not a child: nesting one form
-                inside another is invalid, and this one has its own. */}
             <dialog
               className="fs-dialog"
               ref={dialogRef}
@@ -511,6 +517,7 @@ export default function Teilnehmer() {
 
             {visible.map((row) => {
               const open = expandedId === row.id;
+              const phase = phaseFor(row, now);
 
               return (
                 <div className="fs-entry" key={row.id}>
@@ -540,7 +547,7 @@ export default function Teilnehmer() {
                     <div className="fs-row__status">
                       <span className={`fs-status fs-status--${row.status}`}>
                         <span className="fs-status__dot" />
-                        {STATUS_LABELS[row.status] || row.status}
+                        {PHASE_LABELS[phase] || row.status}
                       </span>
                     </div>
 
@@ -555,6 +562,31 @@ export default function Teilnehmer() {
                       <dd>{row.reason || '—'}</dd>
                       <dt className="fs-eyebrow">Berufstrainer</dt>
                       <dd>{row.assignedBerufstrainer || 'Noch nicht zugewiesen'}</dd>
+                      {row.status === 'genehmigt' && !row.reportedBackAt && (
+                        <>
+                          <dt className="fs-eyebrow">Rückmeldung</dt>
+                          <dd>
+                            {phase === 'genehmigt' && (
+                              <button className="fs-btn fs-btn--ghost" type="button"
+                                disabled={actionId === row.id}
+                                onClick={() => report(row.id, 'unterwegs')}>Bei Termin melden</button>
+                            )}
+                            {new Date(row.startDate).getTime() <= now && (
+                              <button className="fs-btn fs-btn--primary" type="button"
+                                disabled={actionId === row.id}
+                                onClick={() => report(row.id, 'rueckkehr')}>Zurück vom Termin melden</button>
+                            )}
+                          </dd>
+                        </>
+                      )}
+                      {row.reportedBackAt && (
+                        <><dt className="fs-eyebrow">Rückkehr gemeldet</dt>
+                          <dd>{formatDay(row.reportedBackAt)} um {formatTime(row.reportedBackAt)} Uhr</dd></>
+                      )}
+                      {row.cancellationReason && (
+                        <><dt className="fs-eyebrow">Stornierungsgrund</dt>
+                          <dd>{row.cancellationReason}</dd></>
+                      )}
                       <dt className="fs-eyebrow">Anmerkung</dt>
                       <dd>{row.decisionNote || '—'}</dd>
                       <dt className="fs-eyebrow">Beantragt am</dt>
@@ -589,67 +621,22 @@ export default function Teilnehmer() {
           des Folgetages. Für einen Zeitraum, in dem Sie bereits eine Freistellung haben, lässt sich
           keine zweite beantragen.
         </p>
+
+        {/* Am Ende von <main>, wie der Sonstiges-Dialog: er muss erreichbar
+            bleiben, unabhängig davon, welche Karte gerade offen ist. */}
+        <PasswordDialog
+          open={passwordOpen}
+          onClose={() => setPasswordOpen(false)}
+          onDone={setNotice}
+        />
       </main>
     </div>
   );
 }
 
-/* Icons are drawn rather than set in a glyph font, so they scale and take their
-   colour from the element they sit in. */
 
-function PlusIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-      <path d="M7 1.6v10.8M1.6 7h10.8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function AlertIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <rect x="1.4" y="1.4" width="13.2" height="13.2" stroke="currentColor" strokeWidth="1.3" />
-      <path d="M8 5v4M8 11.2v.2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function CheckIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <rect x="1.4" y="1.4" width="13.2" height="13.2" stroke="currentColor" strokeWidth="1.3" />
-      <path
-        d="M4.4 8.3l2.5 2.5 4.7-5"
-        stroke="currentColor"
-        strokeWidth="1.7"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
-      <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function ChevronIcon({ className }) {
-  return (
-    <svg className={className} width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-      <path
-        d="M6 3.5l4.5 4.5L6 12.5"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
+/* CalendarIcon is only used by the empty state on this page, so it stays here;
+   the icons both dashboards share live in client/src/icons.jsx. */
 
 function CalendarIcon() {
   return (

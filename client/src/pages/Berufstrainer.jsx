@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api.js';
 import { useAuth } from '../auth/AuthContext.jsx';
+import PasswordDialog from '../PasswordDialog.jsx';
 import { PHASE_LABELS, groupFor, phaseFor } from '../freistellungStatus.js';
 import './Berufstrainer.css';
 
@@ -97,6 +98,7 @@ export default function Berufstrainer() {
   const [cancelReason, setCancelReason] = useState('');
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
+  const [passwordOpen, setPasswordOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(Date.now());
   const historyDialog = useRef(null);
@@ -218,6 +220,10 @@ export default function Berufstrainer() {
   return <div className="trainer">
     <aside className="trainer__sidebar" aria-label="Berufstrainer-Menü">
       <div className="trainer__brand">BTZ <span>Freistellungen</span></div>
+      {/* Oben links, getrennt von <nav>: die Knöpfe dort wechseln die Ansicht,
+          dieser öffnet einen Dialog und gehört nicht in dieselbe Gruppe. */}
+      <button type="button" className="trainer__password"
+        onClick={() => setPasswordOpen(true)}>Passwort ändern</button>
       <nav>
         <button type="button" className={view === 'overview' ? 'is-active' : ''}
           onClick={() => setView('overview')}>Übersicht</button>
@@ -343,5 +349,11 @@ export default function Berufstrainer() {
         </div>
       </form>
     </dialog>
+
+    {/* Neben den eigenen Dialogen dieser Seite, obwohl er die .fs-dialog-Optik
+        mitbringt: styles.css lädt main.jsx global, und das Formular ist
+        wortgleich das von /teilnehmer. */}
+    <PasswordDialog open={passwordOpen} onClose={() => setPasswordOpen(false)}
+      onDone={(message) => { setError(null); setNotice(message); }} />
   </div>;
 }

@@ -1,25 +1,20 @@
 import { useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 
 import { useAuth } from '../auth/AuthContext.jsx';
+import { dashboardPath } from '../auth/dashboardPath.js';
 
 export default function Login() {
   const { user, loading, login } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
-  // One field for both ways in: a username or an e-mail address. The server
-  // decides which it is, so nothing here has to guess.
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Where RequireAuth bounced the visitor from, defaulting to the home page.
-  const returnTo = location.state?.from?.pathname || '/';
-
   if (loading) return <p className="page__status">Wird geladen …</p>;
-  if (user) return <Navigate to={returnTo} replace />;
+  if (user) return <Navigate to={dashboardPath(user.role)} replace />;
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -27,8 +22,9 @@ export default function Login() {
     setSubmitting(true);
 
     try {
-      await login(identifier, password);
-      navigate(returnTo, { replace: true });
+      // Einheitliches Login; die Rolle aus der Serverantwort bestimmt das Dashboard.
+      const signedIn = await login(identifier, password);
+      navigate(dashboardPath(signedIn.role), { replace: true });
     } catch (err) {
       setError(err.message);
       setSubmitting(false);
@@ -45,8 +41,6 @@ export default function Login() {
       )}
       <form className="login__form" onSubmit={handleSubmit}>
         <label htmlFor="username">Benutzername oder E-Mail</label>
-        {/* type="text", not "email": the same field also takes a plain
-            username, which the browser's e-mail validation would reject. */}
         <input
           id="username"
           name="username"

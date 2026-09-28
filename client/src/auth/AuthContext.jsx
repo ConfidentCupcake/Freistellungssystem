@@ -43,8 +43,12 @@ export function AuthProvider({ children }) {
     setUser(null);
   }, []);
 
+  // Nach einer eigenen Profiländerung übernimmt der Client die aktualisierte
+  // Serverantwort sofort, statt bis zum nächsten Seitenaufruf zu warten.
+  const updateUser = useCallback((updated) => setUser(updated), []);
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

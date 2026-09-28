@@ -72,152 +72,6 @@ a {
   color: #666;
 }
 
-/* admin dashboard */
-
-/* Everything on this page is centred as one column, apart from the top bar,
-   which stays right-aligned like everywhere else. The wrapper keeps the
-   centring scoped to /admin — .page__status is shared with the other pages. */
-.admin {
-  text-align: center;
-}
-
-/* The bar is its own flex row, so it keeps its own alignment; this only stops
-   the wrapper's text-align from reaching the text inside it. */
-.admin .logout {
-  text-align: right;
-}
-
-.admin__section {
-  margin-top: 32px;
-}
-
-/* Reuses .login__form for the field layout. `margin: 0 auto` centres the column
-   on the page, like the login screen, so the button below lands in the middle of
-   the window rather than off at the left edge. The messages above the form and
-   the hint below it share the width so the block stays one column. */
-.admin__form,
-.admin__hint,
-.admin__notice,
-.admin__section .login__error {
-  max-width: 320px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-/* The form column is centred as a block, but its own contents keep reading left
-   to right: inputs inherit text-align, and centred text inside a field looks
-   broken while you type. Labels line up with their fields for the same reason. */
-.admin__form {
-  text-align: left;
-}
-
-/* The form is a stretching flex column, so the button would otherwise fill the
-   whole 320px. align-self shrinks it to its text and centres it in the column. */
-.admin__form button {
-  align-self: center;
-  padding-left: 24px;
-  padding-right: 24px;
-}
-
-.admin__form select {
-  padding: 8px;
-  font: inherit;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background: #fff;
-}
-
-.admin__hint {
-  color: #666;
-}
-
-.admin__notice {
-  padding: 10px;
-  color: #1c5d2c;
-  background: #eaf6ec;
-  border: 1px solid #bfdfc6;
-  border-radius: 4px;
-}
-
-/* A table is only as wide as its content, so centring it takes auto margins;
-   the cells themselves stay left-aligned (see below) — centred columns of names
-   and dates are far harder to scan. */
-.admin__table {
-  border-collapse: collapse;
-  margin: 0 auto;
-}
-
-.admin__table th,
-.admin__table td {
-  padding: 6px 16px 6px 0;
-  text-align: left;
-  border-bottom: 1px solid #eee;
-}
-
-.admin__table th {
-  color: #666;
-  font-weight: bold;
-}
-
-.admin__actions {
-  white-space: nowrap;
-}
-
-/* Link-shaped buttons, so a row of records does not turn into a row of chrome. */
-.admin__action {
-  padding: 0;
-  font: inherit;
-  color: #00B7FF;
-  background: none;
-  border: 0;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.admin__action + .admin__action {
-  margin-left: 12px;
-}
-
-.admin__action--delete {
-  color: #a12622;
-}
-
-.admin__action:disabled {
-  color: #999;
-  text-decoration: none;
-  cursor: default;
-}
-
-/* The inline password form, in a row spanning the whole table. */
-.admin__password {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 0 8px;
-}
-
-.admin__password input {
-  padding: 6px;
-  font: inherit;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-}
-
-.admin__password button {
-  padding: 7px 14px;
-  font: inherit;
-  color: #fff;
-  background: #00B7FF;
-  border: 0;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.admin__password button:disabled {
-  background: #9dddf7;
-  cursor: default;
-}
-
 .logout button {
   font: inherit;
   color: #00B7FF;
@@ -229,12 +83,19 @@ a {
 }
 
 /* ---------------------------------------------------------------------------
-   Teilnehmer dashboard (/teilnehmer)
+   Dashboard shell — shared by /teilnehmer and /admin
 
    A full-bleed app shell in its own visual language: IBM Plex, sharp corners
    (0–2px), cool neutrals and one cobalt accent. Deliberately self-contained —
-   nothing below touches the scaffold classes the other pages still use, so
-   restyling this page moved none of them.
+   nothing below touches the scaffold classes the other pages still use (the
+   login screen, the home page), so restyling a dashboard moves none of them.
+
+   Everything down to the media query is the shell itself: the bar, the cards,
+   the buttons, the banners, the form controls, the filter chips, the expanding
+   list. A page that needs a differently shaped list adds a modifier for its own
+   columns (see .fs-row--users in the /admin block further down) rather than
+   redefining the row. What follows the shell, under "the list", is still
+   written around the Freistellungen on /teilnehmer.
 
    Anything that changes on :hover or with state (the active filter chip, the
    row highlight) is set in these rules and NOT as an inline style on the
@@ -336,8 +197,13 @@ a {
   flex-grow: 1;
 }
 
+/* .fs-bar__action is the one control on the left of the bar, next to the brand.
+   It shares this rule rather than getting a look of its own: the bar is a row of
+   plain underlined controls, and a button styled differently would read as
+   belonging to the page below rather than to the bar. */
 .fs-bar__link,
-.fs-bar__logout {
+.fs-bar__logout,
+.fs-bar__action {
   font: inherit;
   font-size: 13px;
   color: var(--muted);
@@ -349,7 +215,8 @@ a {
 }
 
 .fs-bar__link:hover,
-.fs-bar__logout:hover {
+.fs-bar__logout:hover,
+.fs-bar__action:hover {
   color: var(--ink);
 }
 
@@ -454,6 +321,35 @@ a {
 
 .fs-btn--ghost:hover {
   background: var(--fill);
+}
+
+/* Destructive, and outlined rather than filled: a solid red block next to the
+   cobalt primary reads as the louder of the two, which is backwards for an
+   action nobody should reach for by accident. */
+.fs-btn--danger {
+  font-weight: 500;
+  color: #9a1c1c;
+  background: var(--surface);
+  border: 1px solid #eeadad;
+}
+
+.fs-btn--danger:hover {
+  background: #fbe0e0;
+}
+
+.fs-btn--danger:disabled {
+  color: var(--muted);
+  border-color: var(--line);
+  background: var(--surface);
+  cursor: default;
+}
+
+/* For buttons inside a row's expanded panel, where the full 40px height would
+   outweigh the record they belong to. */
+.fs-btn--sm {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
 }
 
 .fs :is(button, input, textarea, a):focus-visible {
@@ -653,6 +549,12 @@ a {
   color: var(--muted);
 }
 
+/* .fs-banner carries a 20px bottom margin for the page, where it stands alone.
+   Inside the dialog it is one item in a flex column that already has a gap. */
+.fs-dialog__banner {
+  margin-bottom: 0;
+}
+
 .fs-dialog__actions {
   display: flex;
   justify-content: flex-end;
@@ -827,6 +729,13 @@ a {
   border-color: #eeadad;
 }
 
+/* Eine Stornierung bleibt sichtbar, obwohl sie den Zeitraum freigibt. */
+.fs-status--storniert {
+  color: #8d302b;
+  background: #fbe9e7;
+  border-color: #e5b4b0;
+}
+
 .fs-status--geschlossen {
   color: var(--text);
   background: #e6eaee;
@@ -960,5 +869,184 @@ a {
 
   .fs-detail dd {
     margin-bottom: 8px;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Admin dashboard (/admin)
+
+   Only what differs from the shell above: /admin is the same page furniture
+   with a different list in it. Four columns again, but an account instead of a
+   time span, so the row needs its own template and its own cell rules.
+
+   This block sits at the very end on purpose. `.fs-row--users` and `.fs-row`
+   have the same specificity, so the later of the two wins — which also means
+   the narrow-screen rules for /teilnehmer up in that media query would reach
+   these rows if nothing said otherwise. Hence the second media query at the
+   bottom of this block, last in the file and therefore the one that decides.
+   --------------------------------------------------------------------------- */
+
+/* Konto (username + address) | Name | Rolle | Angelegt | chevron */
+.fs-row--users {
+  grid-template-columns: minmax(0, 1fr) 168px 168px 100px 28px;
+}
+
+/* All three are free text out of the database: a long name must not push the
+   columns beside it out of line. */
+.fs-row--data .fs-row__name,
+.fs-row--data .fs-row__mail,
+.fs-row--data .fs-row__person {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fs-row__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.fs-row__mail {
+  margin-top: 3px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+/* Scoped to data rows, like .fs-row__requested above: unscoped they would also
+   enlarge the column headers, which are .fs-eyebrow and must stay 10px. */
+.fs-row--data .fs-row__person {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.fs-row--data .fs-row__created {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* Marks the admin's own row — they cannot delete it, and the disabled button
+   only says so once the row is open. */
+.fs-self {
+  flex-shrink: 0;
+  padding: 2px 5px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: var(--fill);
+  border: 1px solid var(--line);
+}
+
+/* Same chip as .fs-status, one class per user_role value. The base carries the
+   neutral colours, so a role added to the enum still renders as a chip instead
+   of losing its border — only the three overrides below need extending. */
+.fs-role {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--text);
+  background: #e6eaee;
+  border: 1px solid var(--line-strong);
+  border-radius: 2px;
+}
+
+.fs-role__dot {
+  width: 7px;
+  height: 7px;
+  background: currentColor;
+}
+
+.fs-role--admin {
+  color: #1a3a8f;
+  background: #e2e9fb;
+  border-color: #a9bcec;
+}
+
+.fs-role--berufstrainer {
+  color: #0d5a2f;
+  background: #d9f0e1;
+  border-color: #96ceac;
+}
+
+.fs-role--teilnehmer {
+  color: var(--text);
+  background: var(--fill);
+  border-color: var(--line-strong);
+}
+
+/* The actions sit below the detail list rather than in the row: the row is a
+   role="button", and nesting real buttons inside one is what a screen reader
+   would have to untangle. They share the panel's background, so the detail
+   gives up its bottom padding to this element. */
+.fs-detail--tight {
+  padding-bottom: 12px;
+}
+
+.fs-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 18px;
+  background: #f6f8f9;
+}
+
+.fs-actions__hint {
+  flex: 1 1 220px;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+/* The Berufstrainer picker sits in an .fs-actions row rather than a form grid,
+   so it has to match the 32px of .fs-btn--sm next to it instead of the 40px an
+   .fs-input gets in a grid cell. After .fs-select on purpose: both are a single
+   class, so the later rule is the one that wins. */
+.fs-select--sm {
+  height: 32px;
+  font-size: 12px;
+  background-position: right 7px center;
+}
+
+/* The label of that row — .fs-eyebrow is a block elsewhere, and in a flex row it
+   would otherwise take a line of its own. */
+.fs-actions > .fs-eyebrow {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+/* Narrow screens: the account and its role stay on the first line, the display
+   name drops underneath. "Angelegt" is in the detail anyway. */
+@media (max-width: 820px) {
+  .fs-row--users {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    row-gap: 8px;
+  }
+
+  .fs-row__account {
+    grid-area: 1 / 1 / 2 / 2;
+  }
+
+  .fs-row__role {
+    grid-area: 1 / 2 / 2 / 3;
+  }
+
+  .fs-row--data .fs-row__person {
+    grid-area: 2 / 1 / 3 / 4;
+    white-space: normal;
+  }
+
+  .fs-row__created {
+    display: none;
   }
 }

@@ -4,31 +4,42 @@ var freistellungen = require('../../lib/freistellungen');
 
 var router = express.Router();
 
-/* The whole router sits behind requireAuth; see the mount in app.js. Every
- * route works on the signed-in user's own releases — the id comes from the
- * session, never from the request, so nobody can read or file for somebody
- * else. Express 5 forwards a rejected promise to the error handler by itself,
- * and the errors lib/freistellungen.js throws already carry a `status`. */
+// Dieser Router ist ausschließlich für Teilnehmer. Admin- und Traineransichten
+// besitzen eigene Endpunkte mit anderen Sichtbarkeitsregeln.
+router.use(function(req, res, next) {
+  if (req.session.user.role === 'teilnehmer') return next();
+  res.status(403).json({ error: { message: 'Nur für Teilnehmer.' } });
+});
 
-/* GET the caller's own releases. */
+
 router.get('/', async function(req, res, next) {
   res.json({ freistellungen: await freistellungen.listForUser(req.session.user.id) });
 });
 
-/* GET the Berufstrainer a request can be assigned to, for the form's dropdown.
- * The only listing of other accounts a non-admin can reach, so lib/auth.js
- * keeps it to ids and names. A literal path: it would have to stay above a
- * '/:id' route if one is ever added here. */
-router.get('/berufstrainer', async function(req, res, next) {
-  res.json({ berufstrainer: await auth.listBerufstrainer() });
+// Admin-erstellte Teilnehmer tragen ihre Stammdaten nach dem ersten Login
+// selbst ein. Die Session erhält anschließend die aktualisierte Anzeige.
+router.put('/profil', async function(req, res) {
+  var user = await auth.updateOwnProfile(req.session.user.id, req.body);
+  req.session.user = user;
+  res.json({ user: user });
 });
 
-/* POST a new request. It starts as 'offen'; the status is not the caller's to
- * set. An assignee may come with it, or be left out entirely. */
 router.post('/', async function(req, res, next) {
   var freistellung = await freistellungen.createForUser(req.session.user.id, req.body);
 
   res.status(201).json({ freistellung: freistellung });
+});
+
+// Die Rückmeldung ist keine Freigabe und kein Abschluss. Sie erfasst nur,
+// dass der Teilnehmer seine Rückkehr gemeldet hat.
+router.put('/:id/rueckkehr', async function(req, res) {
+  var freistellung = await freistellungen.reportBack(req.params.id, req.session.user.id);
+  res.json({ freistellung: freistellung });
+});
+
+router.put('/:id/unterwegs', async function(req, res) {
+  var freistellung = await freistellungen.markOnWay(req.params.id, req.session.user.id);
+  res.json({ freistellung: freistellung });
 });
 
 module.exports = router;

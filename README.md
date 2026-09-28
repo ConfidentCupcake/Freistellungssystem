@@ -127,6 +127,25 @@ npm run migrate up
 npm run seed
 ```
 
+`npm run db:down` allein reicht dafür nicht: ohne `-v` bleibt das Volume `pgdata` mit dem alten Schema bestehen.
+
+### Migrationen niemals nachträglich ändern
+
+**Eine Migration, die schon einmal committet wurde, wird nicht mehr bearbeitet.** Jede Schemaänderung kommt in eine *neue* Datei (`npm run migrate create <name>`).
+
+node-pg-migrate merkt sich in der Tabelle `pgmigrations` nur den **Dateinamen**, keine Prüfsumme des Inhalts. Wird eine bereits angewendete Datei geändert, sieht `npm run migrate up` sie weiterhin als erledigt an und überspringt sie. Folge: Wer die Datenbank vor der Änderung angelegt hat, behält das alte Schema — dauerhaft und ohne Fehlermeldung. Nur frisch aufgesetzte Datenbanken bekommen den neuen Stand, und dann laufen zwei Maschinen mit unterschiedlichem Schema auf demselben Code. Genau so ist der Enum `user_role` auf manchen Maschinen nie entstanden, während `role` dort noch eine `text`-Spalte ist.
+
+Schemastand einer Maschine prüfen:
+
+```powershell
+docker exec btz-postgres psql -U btz -d btzfreistellungen `
+  -c "SELECT name, run_on FROM pgmigrations ORDER BY id;" `
+  -c "\dT user_role" `
+  -c "SELECT column_name, udt_name FROM information_schema.columns WHERE table_name='users';"
+```
+
+Stehen alle Migrationen als angewendet in `pgmigrations`, `\dT user_role` liefert aber nichts oder `users.role` ist `text` statt `user_role`, ist die Datenbank auseinandergelaufen. Auf einer Entwicklungsmaschine ist der schnellste Weg der komplette Neuaufbau oben. Müssen die Daten erhalten bleiben, hilft nur eine neue Migration, die den Unterschied nachzieht (`ALTER TABLE ... TYPE user_role USING role::text::user_role` und so weiter) — dafür zuerst den Ist-Zustand mit dem Befehl oben erfassen.
+
 ## Wenn etwas nicht startet
 
 | Meldung | Ursache und Lösung |
@@ -139,6 +158,7 @@ npm run seed
 | Anmeldung schlägt fehl, obwohl die Zugangsdaten stimmen | `npm run seed` ausführen; Konten werden nicht beim Serverstart angelegt |
 | Leere Seite auf Port 3000 | Frontend wurde noch nicht gebaut — `npm run build`, oder im Alltag Port 5173 verwenden |
 | `relation "session" does not exist` | Migrationen fehlen — `npm run migrate up` |
+| `type "user_role" does not exist`, oder `/api/users/roles` antwortet mit 500 (die Rollenauswahl unter `/admin` bleibt leer) | Die Datenbank ist älter als eine nachträglich geänderte Migration und wurde deshalb nie aktualisiert — siehe [Migrationen niemals nachträglich ändern](#migrationen-niemals-nachträglich-ändern) |
 
 ## Stand
 
