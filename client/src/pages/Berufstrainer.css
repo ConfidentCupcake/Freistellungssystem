@@ -1,0 +1,114 @@
+/* Die Seitenleiste hält die drei Arbeitsbereiche getrennt. Tabellen und
+   ausklappbare Details greifen die Teilnehmeransicht wieder auf. */
+.trainer { --ink: #172b3d; --border: #d8e1ea; --blue: #2149b8; display: grid;
+  grid-template-columns: 220px minmax(0, 1fr); min-height: 100vh; color: var(--ink);
+  background: #f0f3f6; font-family: Arial, sans-serif; }
+.trainer * { box-sizing: border-box; }
+.trainer__sidebar { display: flex; flex-direction: column; gap: 24px; position: sticky;
+  top: 0; height: 100vh; padding: 24px 16px; background: #fff;
+  border-right: 1px solid var(--border); }
+.trainer__brand { font-weight: 750; letter-spacing: .02em; }
+.trainer__brand span { margin-left: 7px; font-weight: 600; }
+.trainer__sidebar nav { display: grid; gap: 6px; }
+.trainer__sidebar nav button { width: 100%; padding: 12px; border: 0; text-align: left;
+  background: transparent; border-radius: 4px; color: var(--ink); font: inherit; cursor: pointer; }
+.trainer__sidebar nav button:hover, .trainer__sidebar nav .is-active { background: #e8eef9; color: #173b9c; }
+.trainer__account { margin-top: auto; display: grid; gap: 8px; font-size: 13px; }
+.trainer__account button { justify-self: start; }
+.trainer__main { width: min(100%, 1300px); margin: 0 auto; padding: 40px 30px 80px; min-width: 0; }
+.trainer__heading { margin-bottom: 22px; }
+.trainer__heading h1 { margin: 0 0 8px; font-size: 27px; }
+.trainer__heading p { margin: 0; color: #607489; }
+.trainer button:not(.trainer__row):not(.trainer__name-button) {
+  padding: 8px 12px; border: 1px solid #9aafbf; background: #fff; border-radius: 4px;
+  color: #153a60; font: inherit; cursor: pointer; }
+.trainer button:disabled { opacity: .48; cursor: default !important; }
+.trainer .trainer__danger { color: #a32f2b !important; border-color: #d7aaa8 !important; }
+.trainer .trainer__danger:hover { background: #fff0ee !important; }
+.trainer__error, .trainer__notice { padding: 12px 15px; border-radius: 4px; margin-bottom: 20px; }
+.trainer__error { background: #fce8e8; color: #842522; }
+.trainer__notice { background: #e4f5e8; color: #205e33; }
+.trainer__table { width: 100%; border: 1px solid var(--border); background: #fff; }
+.trainer__table-head, .trainer__row { display: grid;
+  grid-template-columns: minmax(145px,1.2fr) minmax(180px,1.45fr) minmax(130px,1.2fr)
+    minmax(150px,1fr) minmax(85px,.7fr) 22px; gap: 12px; align-items: center; }
+.trainer__table-head { padding: 15px 16px; background: #f8fafb; color: #63798e;
+  font-size: 10px; font-weight: 750; letter-spacing: .13em; text-transform: uppercase; }
+.trainer__entry { border-top: 1px solid var(--border); }
+.trainer__row { width: 100%; min-height: 68px; padding: 12px 16px; border: 0;
+  background: #fff; color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.trainer__row:hover { background: #f8fbff; }
+.trainer__row span { min-width: 0; overflow-wrap: anywhere; }
+.trainer__row small { display: block; color: #667b8b; margin-top: 3px; }
+.trainer__person-name { font-weight: 700; }
+.trainer__chevron { font-size: 21px; color: #8095a5; }
+.trainer__status { display: inline-block; padding: 5px 7px; font-size: 11px;
+  border: 1px solid #ced5db; background: #e9edf1; white-space: normal; }
+.trainer__status--offen { background: #fff4db; border-color: #e5c870; }
+.trainer__status--genehmigt { background: #e5ecff; border-color: #9db5ef; }
+.trainer__status--bei_termin, .trainer__status--zurueck {
+  background: #e0f5e8; border-color: #a0d9b6; color: #0c7136; }
+.trainer__status--storniert, .trainer__status--abgelehnt {
+  background: #fae8e6; border-color: #e3b6b2; }
+.trainer__detail { padding: 10px 18px 20px; background: #f7f9fb; }
+.trainer__detail dl { display: grid; grid-template-columns: 155px 1fr; gap: 10px 15px; margin: 8px 0 18px; }
+.trainer__detail dt { color: #667b8b; font-size: 11px; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase; }
+.trainer__detail dd { margin: 0; overflow-wrap: anywhere; }
+.trainer__actions { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-bottom: 12px; }
+.trainer__actions label, .trainer__form label, .trainer__transfer label,
+.trainer__dialog label { display: grid; gap: 5px; font-size: 13px; }
+.trainer input, .trainer select, .trainer textarea, .trainer__dialog textarea {
+  width: 100%; padding: 9px; border: 1px solid #aab9c5; border-radius: 4px;
+  color: #172b3d; background: #fff; font: inherit; }
+.trainer__actions textarea { width: min(340px,80vw); min-height: 48px; }
+.trainer__empty { padding: 24px; border: 1px solid var(--border); background: #fff; color: #63798e; }
+.trainer__create { max-width: 790px; }
+.trainer__form { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 18px;
+  padding: 25px; border: 1px solid var(--border); background: #fff; }
+.trainer__form button { justify-self: start; align-self: end; }
+.trainer__people { display: grid; gap: 10px; }
+.trainer__person { background: #fff; border: 1px solid var(--border); }
+.trainer__person-line { display: grid; grid-template-columns: minmax(190px,1.3fr)
+  minmax(160px,1fr) minmax(180px,1fr) auto; align-items: center; gap: 12px; padding: 17px; }
+.trainer__name-button { padding: 0; border: 0; background: none; text-align: left;
+  color: var(--blue); font: inherit; font-weight: 700; cursor: pointer; }
+.trainer__name-button span { margin-left: 5px; }
+.trainer__person-detail { padding: 18px; border-top: 1px solid var(--border); background: #f8fafc; }
+.trainer__person-detail h2 { margin: 0 0 14px; font-size: 17px; }
+.trainer__transfer { display: flex; align-items: end; flex-wrap: wrap; gap: 10px;
+  margin-top: 18px; padding-top: 15px; border-top: 1px solid var(--border); }
+.trainer__transfer label { width: min(300px,100%); }
+.trainer__transfer small { color: #8b4b1d; width: 100%; }
+.trainer__dialog { max-width: min(1100px, 95vw); max-height: 85vh; overflow: auto;
+  padding: 24px; border: 1px solid var(--border); border-radius: 6px; background: #fff;
+  color: #172b3d; }
+.trainer__dialog::backdrop { background: rgb(14 29 45 / 58%); }
+.trainer__history { width: min(1100px, 95vw); }
+.trainer__dialog-head, .trainer__dialog-buttons { display: flex; align-items: center;
+  justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.trainer__dialog h2 { margin: 0; }
+.trainer__cancel { width: min(500px, 94vw); }
+.trainer__cancel form { display: grid; gap: 16px; }
+.trainer__cancel textarea { min-height: 110px; }
+.trainer__dialog-buttons { justify-content: flex-end; margin-bottom: 0; }
+.trainer__dialog button { padding: 8px 12px; border: 1px solid #9aafbf;
+  border-radius: 4px; background: #fff; color: #153a60; font: inherit; cursor: pointer; }
+.trainer__dialog button:disabled { opacity: .5; cursor: default; }
+.trainer__dialog .trainer__danger { color: #a32f2b; border-color: #d7aaa8; }
+@media (max-width: 920px) {
+  .trainer { grid-template-columns: 1fr; }
+  .trainer__sidebar { position: static; height: auto; gap: 10px; }
+  .trainer__sidebar nav { display: flex; flex-wrap: wrap; }
+  .trainer__sidebar nav button { width: auto; }
+  .trainer__account { margin-top: 0; display: flex; align-items: center; }
+  .trainer__main { padding: 22px 15px; }
+  .trainer__table { overflow-x: auto; }
+  .trainer__table-head, .trainer__row { min-width: 770px; }
+  .trainer__person-line { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 540px) {
+  .trainer__form, .trainer__person-line { grid-template-columns: 1fr; }
+  .trainer__detail dl { grid-template-columns: 1fr; gap: 4px; }
+  .trainer__detail dt { margin-top: 8px; }
+}
